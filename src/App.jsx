@@ -16,8 +16,23 @@ function App() {
   const [ageMonths, setAgeMonths] = useState("");
   const [formStatus, setFormStatus] = useState("");
 
-  // Stats from /animal-stats
+  // Stats from /animal-stats (simple aggregate)
   const [stats, setStats] = useState([]);
+
+  // ------------------------------
+  // Advanced query state (NEW)
+  // ------------------------------
+  // Welfare follow-ups query (filter by species)
+  const [welfareSpecies, setWelfareSpecies] = useState("All");
+  const [welfareRows, setWelfareRows] = useState([]);
+
+  // Adoption stats query (filter by state)
+  const [statsState, setStatsState] = useState("All");
+  const [adoptionStatsRows, setAdoptionStatsRows] = useState([]);
+
+  // Shared loading/error for complex queries
+  const [complexLoading, setComplexLoading] = useState(false);
+  const [complexError, setComplexError] = useState(null);
 
   // Reusable fetch function so we can reload after insert/delete
   const fetchAnimals = () => {
@@ -152,6 +167,56 @@ function App() {
       });
   };
 
+  // ----------------------------------
+  // Complex query handlers (NEW)
+  // ----------------------------------
+
+  const runWelfareQuery = async () => {
+    setComplexError(null);
+    setComplexLoading(true);
+    try {
+      let url = `${API_BASE}/welfare-followups`;
+      if (welfareSpecies && welfareSpecies !== "All") {
+        url += `?species=${encodeURIComponent(welfareSpecies)}`;
+      }
+
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`Welfare query failed: ${res.status}`);
+      }
+      const data = await res.json();
+      setWelfareRows(data);
+    } catch (err) {
+      console.error(err);
+      setComplexError(err.message);
+    } finally {
+      setComplexLoading(false);
+    }
+  };
+
+  const runAdoptionStatsQuery = async () => {
+    setComplexError(null);
+    setComplexLoading(true);
+    try {
+      let url = `${API_BASE}/adoption-stats`;
+      if (statsState && statsState !== "All") {
+        url += `?state=${encodeURIComponent(statsState)}`;
+      }
+
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`Adoption stats query failed: ${res.status}`);
+      }
+      const data = await res.json();
+      setAdoptionStatsRows(data);
+    } catch (err) {
+      console.error(err);
+      setComplexError(err.message);
+    } finally {
+      setComplexLoading(false);
+    }
+  };
+
   return (
     <div
       style={{
@@ -277,7 +342,9 @@ function App() {
 
         {loading && <p>Loading animals from the database…</p>}
 
-        {error && <p style={{ color: "#f97373" }}>Error loading animals: {error}</p>}
+        {error && (
+          <p style={{ color: "#f97373" }}>Error loading animals: {error}</p>
+        )}
 
         {!loading && !error && (
           <div
@@ -323,7 +390,8 @@ function App() {
                     <tr
                       key={a.AnimalID ?? idx}
                       style={{
-                        backgroundColor: idx % 2 === 0 ? "#020617" : "#030712",
+                        backgroundColor:
+                          idx % 2 === 0 ? "#020617" : "#030712",
                       }}
                     >
                       <td style={tdStyle}>{a.AnimalID}</td>
@@ -455,7 +523,307 @@ function App() {
           )}
         </section>
 
-        <footer style={{ marginTop: "1.25rem", fontSize: "0.8rem", color: "#6b7280" }}>
+        {/* --------------------------------- */}
+        {/* Advanced Queries (Complex) - NEW */}
+        {/* --------------------------------- */}
+        <section
+          style={{
+            marginTop: "1.75rem",
+            padding: "1rem",
+            borderRadius: "0.75rem",
+            border: "1px solid #1f2937",
+            backgroundColor: "#020617",
+          }}
+        >
+          <h2 style={{ fontSize: "1.1rem", marginBottom: "0.5rem" }}>
+            Advanced Queries (Complex)
+          </h2>
+          <p
+            style={{
+              color: "#9ca3af",
+              fontSize: "0.85rem",
+              marginBottom: "0.75rem",
+            }}
+          >
+            These views run multi-table queries from our database to support welfare
+            and management use cases.
+          </p>
+
+          {complexError && (
+            <p style={{ color: "#f97373", fontSize: "0.85rem" }}>
+              Complex query error: {complexError}
+            </p>
+          )}
+
+          {/* Welfare Follow-Ups */}
+          <div
+            style={{
+              marginBottom: "1.25rem",
+              paddingBottom: "1rem",
+              borderBottom: "1px solid #1f2937",
+            }}
+          >
+            <h3 style={{ fontSize: "1rem", marginBottom: "0.4rem" }}>
+              Welfare Follow-Ups
+            </h3>
+            <p
+              style={{
+                color: "#9ca3af",
+                fontSize: "0.8rem",
+                marginBottom: "0.5rem",
+              }}
+            >
+              Shows animals with welfare exams where the health score is low (≤ 6), joined with
+              their organization.
+            </p>
+
+            <label
+              style={{
+                fontSize: "0.85rem",
+                marginRight: "0.5rem",
+                color: "#e5e7eb",
+              }}
+            >
+              Species:
+              <select
+                value={welfareSpecies}
+                onChange={(e) => setWelfareSpecies(e.target.value)}
+                style={{
+                  marginLeft: "0.35rem",
+                  padding: "0.3rem 0.6rem",
+                  borderRadius: "0.5rem",
+                  border: "1px solid #4b5563",
+                  backgroundColor: "#020617",
+                  color: "white",
+                  fontSize: "0.9rem",
+                }}
+              >
+                <option value="All">All</option>
+                <option value="Dog">Dog</option>
+                <option value="Cat">Cat</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+
+            <button
+              onClick={runWelfareQuery}
+              style={{
+                padding: "0.4rem 0.75rem",
+                borderRadius: "0.5rem",
+                backgroundColor: "#4f46e5",
+                border: "none",
+                color: "white",
+                fontSize: "0.9rem",
+                cursor: "pointer",
+                marginLeft: "0.5rem",
+              }}
+            >
+              Run Welfare Query
+            </button>
+
+            {complexLoading && (
+              <p style={{ marginTop: "0.5rem", fontSize: "0.85rem" }}>
+                Running complex query…
+              </p>
+            )}
+
+            {!complexLoading && welfareRows.length > 0 && (
+              <div
+                style={{
+                  marginTop: "0.75rem",
+                  borderRadius: "0.5rem",
+                  border: "1px solid #1f2937",
+                  overflow: "auto",
+                }}
+              >
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  <thead style={{ backgroundColor: "#111827" }}>
+                    <tr>
+                      <th style={thStyle}>Animal ID</th>
+                      <th style={thStyle}>Species</th>
+                      <th style={thStyle}>Age (months)</th>
+                      <th style={thStyle}>Sex</th>
+                      <th style={thStyle}>Org</th>
+                      <th style={thStyle}>Exam Date</th>
+                      <th style={thStyle}>Health Score</th>
+                      <th style={thStyle}>Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {welfareRows.map((r, idx) => (
+                      <tr
+                        key={idx}
+                        style={{
+                          backgroundColor: idx % 2 === 0 ? "#020617" : "#030712",
+                        }}
+                      >
+                        <td style={tdStyle}>{r.AnimalID}</td>
+                        <td style={tdStyle}>{r.Species}</td>
+                        <td style={tdStyle}>{r.AgeMonths}</td>
+                        <td style={tdStyle}>{r.Sex}</td>
+                        <td style={tdStyle}>{r.OrgName}</td>
+                        <td style={tdStyle}>
+                          {r.ExamDate ? String(r.ExamDate).slice(0, 10) : ""}
+                        </td>
+                        <td style={tdStyle}>{r.HealthScore}</td>
+                        <td style={tdStyle}>{r.Notes}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {!complexLoading && welfareRows.length === 0 && (
+              <p
+                style={{
+                  marginTop: "0.5rem",
+                  fontSize: "0.8rem",
+                  color: "#9ca3af",
+                }}
+              >
+                No welfare follow-up results yet. Try running the query after
+                adding exam data.
+              </p>
+            )}
+          </div>
+
+          {/* Adoption Stats */}
+          <div>
+            <h3 style={{ fontSize: "1rem", marginBottom: "0.4rem" }}>
+              Adoption Stats
+            </h3>
+            <p
+              style={{
+                color: "#9ca3af",
+                fontSize: "0.8rem",
+                marginBottom: "0.5rem",
+              }}
+            >
+              Shows adoption counts by state and species using a multi-table join
+              and GROUP BY.
+            </p>
+
+            <label
+              style={{
+                fontSize: "0.85rem",
+                marginRight: "0.5rem",
+                color: "#e5e7eb",
+              }}
+            >
+              State:
+              <select
+                value={statsState}
+                onChange={(e) => setStatsState(e.target.value)}
+                style={{
+                  marginLeft: "0.35rem",
+                  padding: "0.3rem 0.6rem",
+                  borderRadius: "0.5rem",
+                  border: "1px solid #4b5563",
+                  backgroundColor: "#020617",
+                  color: "white",
+                  fontSize: "0.9rem",
+                }}
+              >
+                <option value="All">All</option>
+                <option value="WA">WA</option>
+                <option value="OR">OR</option>
+                {/* Add more states if used in your data */}
+              </select>
+            </label>
+
+            <button
+              onClick={runAdoptionStatsQuery}
+              style={{
+                padding: "0.4rem 0.75rem",
+                borderRadius: "0.5rem",
+                backgroundColor: "#4f46e5",
+                border: "none",
+                color: "white",
+                fontSize: "0.9rem",
+                cursor: "pointer",
+                marginLeft: "0.5rem",
+              }}
+            >
+              Run Adoption Stats Query
+            </button>
+
+            {complexLoading && (
+              <p style={{ marginTop: "0.5rem", fontSize: "0.85rem" }}>
+                Running complex query…
+              </p>
+            )}
+
+            {!complexLoading && adoptionStatsRows.length > 0 && (
+              <div
+                style={{
+                  marginTop: "0.75rem",
+                  borderRadius: "0.5rem",
+                  border: "1px solid #1f2937",
+                  overflow: "auto",
+                }}
+              >
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  <thead style={{ backgroundColor: "#111827" }}>
+                    <tr>
+                      <th style={thStyle}>State</th>
+                      <th style={thStyle}>Species</th>
+                      <th style={thStyle}>Adoption Count</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adoptionStatsRows.map((r, idx) => (
+                      <tr
+                        key={idx}
+                        style={{
+                          backgroundColor:
+                            idx % 2 === 0 ? "#020617" : "#030712",
+                        }}
+                      >
+                        <td style={tdStyle}>{r.State}</td>
+                        <td style={tdStyle}>{r.Species}</td>
+                        <td style={tdStyle}>{r.AdoptionCount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {!complexLoading && adoptionStatsRows.length === 0 && (
+              <p
+                style={{
+                  marginTop: "0.5rem",
+                  fontSize: "0.8rem",
+                  color: "#9ca3af",
+                }}
+              >
+                No adoption stats to show yet. Run the query once you have
+                adoption data in the system.
+              </p>
+            )}
+          </div>
+        </section>
+
+        <footer
+          style={{
+            marginTop: "1.25rem",
+            fontSize: "0.8rem",
+            color: "#6b7280",
+          }}
+        >
           <p>Data source: Pet Health & Welfare MySQL database on Railway.</p>
         </footer>
       </div>
