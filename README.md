@@ -1,3 +1,11 @@
+# Archived / Superseded
+
+This standalone frontend repository has been replaced by the combined full-stack project repo:
+
+https://github.com/jxtran9/pet-welfare-database
+
+This repo is kept for historical reference only. Please use the combined repo for the latest React frontend, FastAPI backend, SQL files, and project documentation.
+
 # Pet Welfare UI (React + Vite)
 
 This is the React frontend for the Pet Health & Welfare Database project.
